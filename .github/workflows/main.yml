@@ -1,0 +1,45 @@
+name: Monitoring Setup
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  setup-monitoring:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker images
+        run: |
+          docker-compose -f docker-compose.yml build
+
+      - name: Start Monitoring Services (Prometheus, Grafana, MySQL Exporter)
+        run: |
+          docker-compose -f docker-compose.yml up -d
+
+      - name: Run Prometheus and Grafana services verification
+        run: |
+          curl -s http://localhost:9090/metrics > /dev/null  # Check if Prometheus is running
+          curl -s http://localhost:3000/ > /dev/null  # Check if Grafana is accessible
+
+      - name: Test MySQL Exporter Connection
+        run: |
+          docker exec -t <mysqld_exporter_container_name> mysql -u<username> -p<password> -h <mysql_host> -e 'SHOW DATABASES;'
+
+      - name: Verify Prometheus scrape targets
+        run: |
+          curl -s http://localhost:9090/targets | grep -q 'mysql'
+
+      - name: Clean up Docker services
+        run: |
+          docker-compose -f docker-compose.yml down
