@@ -1,45 +1,49 @@
-name: Monitoring Setup
+name: Flask App CI/CD with Backup
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:  # allows manual triggering
 
 jobs:
-  setup-monitoring:
+  docker-stack:
     runs-on: ubuntu-latest
-    
+    env:
+      DB_USER: admin
+      DB_PASSWORD: secret
+      DB_NAME: mydatabase
+      DB_HOST: db
+      DB_PORT: 3306
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+      - name: 🐳 Set up Docker
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker images
+      - name: 🔧 Build and Start Docker Stack
+        run: docker compose up -d --build
+
+      - name: ⏱️ Wait for MySQL to be ready
         run: |
-          docker compose -f docker-compose.yml build
+          echo "Waiting for MySQL to be ready..."
+          until docker exec mysql_db mysql -u$DB_USER -p$DB_PASSWORD -e "SHOW DATABASES;"; do
+            echo "Waiting for DB..."
+            sleep 5
+          done
 
-      - name: Start Monitoring Services (Prometheus, Grafana, MySQL Exporter)
-        run: |
-          docker compose -f docker-compose.yml up -d
+      - name: 💾 Run Backup Script
+        run: bash ./backup.sh
 
-      - name: Run Prometheus and Grafana services verification
-        run: |
-          curl -s http://localhost:9090/metrics > /dev/null  # Check if Prometheus is running
-          curl -s http://localhost:3000/ > /dev/null  # Check if Grafana is accessible
+      - name: 📦 Upload Backup Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mysql-backup
+          path: ./backups/
 
-      - name: Test MySQL Exporter Connection
-        run: |
-          docker exec -t <mysqld_exporter_container_name> mysql -u<username> -p<password> -h <mysql_host> -e 'SHOW DATABASES;'
-
-      - name: Verify Prometheus scrape targets
-        run: |
-          curl -s http://localhost:9090/targets | grep -q 'mysql'
-
-      - name: Clean up Docker services
-        run: |
-          docker-compose -f docker-compose.yml down
+      - name: 🧹 Clean up Docker
+        run: docker-compose down -v
