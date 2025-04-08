@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 🐳 Set up Docker
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: 🔧 Build and Start Docker Stack
         run: docker compose up -d --build
