@@ -40,7 +40,7 @@ jobs:
         run: bash ./backup.sh
 
       - name: 📦 Upload Backup Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mysql-backup
           path: ./backups/
