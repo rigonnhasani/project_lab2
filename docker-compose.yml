@@ -61,7 +61,7 @@ services:
       - app_network
 
   mysql-exporter:
-    image: prom/mysqld-exporter
+    image: prom/mysqld-exporter:v0.12.1
     container_name: mysql_exporter
     restart: always
     environment:
@@ -69,7 +69,7 @@ services:
     ports:
     - "9104:9104"
     volumes:
-      - ./path/to/.my.cnf:/etc/mysql/.my.cnf
+      - ./.my.cnf:/etc/mysql/.my.cnf
     depends_on:
     - db
     networks:
